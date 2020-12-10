@@ -1,5 +1,48 @@
 import random
+
 import pygame
+
+from top_of_the_pops import Database_manager
+
+
+class InputBox:
+
+    def __init__(self, x, y, height, width, colour, surface, text=''):
+        self.pos_x = x
+        self.pos_y = y
+        self.height = height
+        self.width = width
+        self.text = text
+        self.colour = colour
+        self.surface = surface
+        self.font = pygame.font.SysFont(None, 24)
+
+    def draw_input_box(self, surface):
+        pygame.draw.rect(surface, (self.colour), (self.pos_x, self.pos_y, self.height, self.width))
+        self.surface.blit(
+            self.font.render(self.text, True, (255, 0, 0)),
+            ((self.pos_x, self.pos_y, self.height, self.width) )
+        )
+
+    def handle_event(self, event):
+
+        if event.type == pygame.KEYDOWN:
+
+
+          if event.key == pygame.K_RETURN:
+              return True
+
+              self.text = ''
+          elif event.key == pygame.K_BACKSPACE:
+            self.text = self.text[:-1]
+          else:
+            self.text += event.unicode
+        # Re-render the text.
+
+
+
+
+
 
 
 class Food(pygame.sprite.Sprite):
@@ -17,9 +60,10 @@ class Food(pygame.sprite.Sprite):
 
     def make_apple(self):
         w, h = self.surface.get_size()
-        if self.food_eaten == True:
-            self.x = random.randint(0, w)
-            self.y = random.randint(0, h)
+
+
+        self.x = random.randint(0, w)
+        self.y = random.randint(0, h)
 
     def draw_food(self):
         pass
@@ -45,6 +89,7 @@ class Button:
         self.button_text = text
         self.colour = colour
         self.font = pygame.font.SysFont(None, 24)
+        #self.font = pygame.font.Font(None, 24)
 
     def draw_rect(self):
         pygame.draw.rect(
@@ -54,7 +99,7 @@ class Button:
         )
         self.UI.blit(
             self.font.render(self.button_text, True, (255, 0, 0)),
-            (self.positionX, self.positionY),
+            (self.positionX + self.shape_size, self.positionY + self.shape_size /4 )
         )
 
     def check_pos(self, position):
@@ -66,6 +111,13 @@ class Button:
             ):
 
                 return True
+
+    def change_colour(self, colour):
+        self.colour = colour
+        self.positionX += 5
+        self.positionY += 5
+        pygame.display.update()
+        self.draw_rect()
 
 
 class Snake(pygame.sprite.Sprite):
@@ -81,7 +133,7 @@ class Snake(pygame.sprite.Sprite):
         self.shapeY = starting_positionY
         self.shape_size = shape_size
         self.UI = surface
-        colour = (0, 255, 0)
+        colour = (0, 200, 0)
         self.movespeed = movespeed
         self.segments = 25
         self.body = []
@@ -154,6 +206,7 @@ class Snake(pygame.sprite.Sprite):
                 self.make_coordinates()
             elif self.shapeX == 0:
                 self.draw_body()
+                return False
 
             self.first_up = True
             self.first_down = True
@@ -167,6 +220,7 @@ class Snake(pygame.sprite.Sprite):
                 self.make_coordinates()
             elif self.shapeX + self.shape_size == window_width:
                 self.draw_body()
+                return False
 
             self.first_up = True
             self.first_down = True
@@ -175,17 +229,19 @@ class Snake(pygame.sprite.Sprite):
 
             if playerv_y > 0.0:
 
-                if self.shapeY > 0:
+                if self.shapeY > 20:
                     if self.first_up:
                         self.shapeY -= self.shape_size
                         self.first_up = False
+
 
                     else:
                         self.shapeY -= self.movespeed
 
                     self.make_coordinates()
-                elif self.shapeY == 0:
+                elif self.shapeY == 20:
                     self.draw_body()
+                    return False
 
         if down:
             if self.shapeY + self.shape_size < window_height:
@@ -198,7 +254,8 @@ class Snake(pygame.sprite.Sprite):
 
             elif self.shapeY + self.shape_size == window_height:
                 self.draw_body()
-                game_alive = False
+                return False
+
 
         return game_alive
 
@@ -222,10 +279,31 @@ class Snake(pygame.sprite.Sprite):
 
         if collides:
             self.counter += 1
-            print(f"Head_collides {self.counter}")
+            #print(f"Head_collides {self.counter}")
 
 
-def main_menu(window):
+def display_scores(window, font, score_manager):
+    a = score_manager.retrieve_high_scores()
+    print(type(a))
+
+
+    while True:
+        b = 0
+        window.fill((0,0,0))
+        window.blit(font.render('High Scores' , True, (255, 255, 0)), ( 20 , 2 ))
+
+        for i in a:
+
+            c,d = i
+            window.blit(font.render(str(c) , True, (255, 255, 0)), ( 40, (20+b) ))
+            window.blit(font.render(str(d) , True, (255, 255, 0)), ( 600, (20+b) ))
+            b +=20
+        pygame.display.update()
+
+
+
+
+def main_menu(window, font, score_manager):
     w, h = pygame.display.get_surface().get_size()
     start_game = False
 
@@ -233,20 +311,31 @@ def main_menu(window):
     scores = Button((w / 2) - 80, h / 2, 40, window, "Scores")
 
     while start_game is False:
-        window.fill((0, 0, 0))
+        window.fill((0, 200, 0))
         start_button.draw_rect()
         scores.draw_rect()
         position = pygame.mouse.get_pos()
+        pygame.event.get()
+
         if pygame.mouse.get_pressed()[0]:
-            pressed = start_button.check_pos(position)
-            if pressed:
+              start_pressed = start_button.check_pos(position)
+              scores_pressed =scores.check_pos(position)
+              if start_pressed:
+                start_button.change_colour((0,0,210))
+                window.fill((0, 200, 0))
+                start_button.draw_rect()
+                scores.draw_rect()
+
+                pygame.display.update()
+
+                pygame.time.delay(900)
                 start_game = True
 
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT:
-                    start_game = True
-                    print("hello2")
+              if scores_pressed:
+
+                  display_scores(window, font, score_manager)
+
+
 
         pygame.display.update()
 
@@ -255,9 +344,15 @@ def main():
     clock = pygame.time.Clock()
     pygame.init()
 
+    score_manager = Database_manager('High_score.db')
+
+    score_manager.create_table('High Scores', ('Name Text', 'Score Int'))
+
     window_width = 800
     window_height = 800
     shape_size = 20
+
+    score = 0
 
     shape_x = window_width / 2
     shape_y = window_height / 2
@@ -280,27 +375,43 @@ def main():
     food.rect.x = random.randint(0, window_height)
     food.rect.y = random.randint(0, window_width)
     food_group.add(food)
+    font = pygame.font.SysFont(None, 24)
+    main_menu(window, font, score_manager)
 
-    main_menu(window)
+
+    input_box = InputBox(window_width/2,window_height/3,200,50,(255,255,255),window,'')
 
     while True:
-        window.fill((0, 0, 0))
+        window.fill((0,0,0), (0, 20, (window_height), window_width ))
         clock.tick(60)
         food_group.draw(window)
+        window.blit(font.render(str(score) , True, (255, 255, 0)), ( 20 , 2 ))
+
+
+
         collision = snake.collision_check(food_group)
         if collision:
             snake.grow()
+            score +=1
+            window.fill((0,200,0), (0,0,window_width,20))
+            window.blit(window, (0,0,20,window_width))
             food.rect.x = random.randint(0, window_height)
-            food.rect.y = random.randint(0, window_width)
+            food.rect.y = random.randint(400, window_width)
 
         snake.draw_head()
         snake.first_time = False
+
 
         crash_self = snake.self_collision_check()
 
         for event in pygame.event.get():
 
+
             if event.type == pygame.QUIT:
+                print(score)
+                score_manager.insert_into_table(('James_test', int(score)))
+                score_manager.close()
+                print('Hello')
                 pygame.quit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
@@ -359,7 +470,35 @@ def main():
             left_down, right_down, up_down, down, playerv_y, window_width, window_height
         )
         if game_alive is False:
-            window.fill((255, 255, 255))
+            while True:
+                window.fill((0, 255, 255))
+                window.blit(font.render(f'Game Over! Your score was {score}', True, (255,0,0)), (50, 40))
+                start_button = Button((window_width / 2) - 80, window_height / 2, 40, window, "Another !!")
+                quit_btton = Button((window_width / 2) - 80, window_height / 1.5, 40, window, "Another day!")
+
+                for event in pygame.event.get():
+                    if event.type == pygame.KEYDOWN:
+                      insert_db = input_box.handle_event(event)
+                      if insert_db:
+                          score_manager.insert_into_table((input_box.text, score))
+                          main()
+                quit_btton.draw_rect()
+                start_button.draw_rect()
+                input_box.draw_input_box(window)
+                position = pygame.mouse.get_pos()
+                start_pressed = start_button.check_pos(position)
+                quit_game = quit_btton.check_pos(position)
+                pygame.event.get()
+                if pygame.mouse.get_pressed()[0]:
+                    if start_pressed:
+                        main()
+                    if quit_game:
+                        pygame.quit()
+
+
+
+                pygame.display.update()
+
         pygame.display.update()
 
 
